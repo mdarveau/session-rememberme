@@ -142,7 +142,6 @@ module.exports = ( configs ) ->
           cb null
         
     ], ( err ) ->
-      console.log "#{req.method} #{req.path}: Remember me error: #{JSON.stringify(err)}" if err 
       next( err )
   
   return exports 
