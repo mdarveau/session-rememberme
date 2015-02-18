@@ -1,7 +1,7 @@
 {
   "name": "session-rememberme",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Add remember-me support to your app with this express middleware.",
   "author": "Manuel Darveau <manueldarveau@gmail.com> (http://blog.mdarveau.com)",
   "keywords": [
@@ -32,6 +32,7 @@
     "node": ">= 0.10.0"
   },
   "scripts": {
+    "prepublish": "coffee -o lib/ src/",
     "test": "mocha --compilers coffee:coffee-script/register --reporter spec --bail --check-leaks test/",
     "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --reporter dot --check-leaks test/",
     "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --compilers coffee:coffee-script/register --reporter spec --check-leaks test/"
