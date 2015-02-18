@@ -10,39 +10,57 @@ module.exports = ( configs ) ->
   throw "saveNewToken must be defined" unless configs?.saveNewToken?
   
   defaults = 
+    # The name of the cookie used to store the rememberme info. Defaults to 'rememberme'.
     cookieName : 'rememberme'
+    
+    # How log should the user be remembered. Defaults to 90 days.
     maxAge: 90 * 24 * 60 * 60 * 1000
     
-    # Return true if session is already authenticated
     checkAuthenticated: ( req ) ->
+      # Return true if session is already authenticated
       return req.session? && req.session?.user?
     
-    # Should load the session user (from DB) based on cookie user.
     # cookieUser: The user data persisted in cookie. Could be an id or a complex id that will be serialized with JSON.stringify.
-    # cb: ( userRememberMeTokens[], sessionUser )
+    # cb ( err, userRememberMeTokens[], sessionUser ):
     #   err: Error loading user. This will end to request but keep the cookie intact. If you want to clear the cookie (because the user is not found for example), pass null in `userTokens` and `sessionUser`.
     #   userRememberMeTokens: The list of rememberme tokens associated with the user
-    #   sessionUser: The user to save in session. Will be passed back to setUserInSession
+    #   sessionUser: The user (typically the user id) to save in session. Will be passed back to setUserInSession
     loadUser: ( cookieUser, cb ) ->
+      # Should load the session user (from DB) based on user info stored in cookie.
       return
     
     # Will be called with sessionUser passed to loadUser's cb sessionUser when the rememember me token was validated.
+    # req: the express Request object.
+    # sessionUser: the user loaded by loadUser. Typically the user id.
     setUserInSession: ( req, sessionUser ) ->
+      # Should store user information in session. This can then be used in checkAuthenticated.
       req.session.user = sessionUser
       
+    # Called when a token is invalidated
+    # sessionUser: the user loaded by loadUser. Typically the user id.
+    # token: the token to delete
+    # cb (err)
     deleteToken: ( sessionUser, token, cb ) ->
+      # Should remove the token from persistence store
       return
     
+    # Called when an attack is suspected
+    # sessionUser: the user loaded by loadUser. Typically the user id.
+    # cb (err)
     deleteAllTokens: ( sessionUser, cb ) ->
+      # Should remove all tokens from persistence store
       return
   
+    # sessionUser: the user loaded by loadUser. Typically the user id.
+    # newToken: the newly generated token that should be added to persistence store
+    # cb (err)
     saveNewToken: ( sessionUser, newToken, cb ) ->
       return
       
   configs = _.merge defaults, configs  
     
   # Will return the new token in res cookie and the call cb
-  generateRememberMeToken = ( req, sessionUser, currentToken, cookieUser, res, cb ) ->
+  generateRememberMeToken = ( sessionUser, currentToken, cookieUser, res, cb ) ->
     async.waterfall [
       ( cb ) ->
         # Delete current token
@@ -59,14 +77,13 @@ module.exports = ( configs ) ->
         newToken = newTokenBuffer.toString( 'hex' )
     
         # Persist the new token
-        configs.saveNewToken sessionUser, newToken, ( err ) ->
+        configs.saveNewToken sessionUser, crypto.createHash('md5').update(newToken).digest('hex'), ( err ) ->
           cb err, newToken
   
     ], ( err, newToken ) ->
       return cb( err ) if err?
   
       # Return the new token in cookie
-      console.log "#{req.method} #{req.path}: Returning cookie: #{newToken}"
       res.cookie( configs.cookieName, {user: cookieUser, token: newToken}, {maxAge: configs.maxAge, httpOnly: true} );
       cb null
   
@@ -77,8 +94,8 @@ module.exports = ( configs ) ->
   # Should be called after successfull login AND the remember me option was set.
   # Will add a cookie to the response so you must write response only in the callback.
   #
-  exports.login = ( req, sessionUser, cookieUser, res, cb ) ->
-    generateRememberMeToken req, sessionUser, null, cookieUser, res, cb
+  exports.login = ( sessionUser, cookieUser, res, cb ) ->
+    generateRememberMeToken sessionUser, null, cookieUser, res, cb
   
   #
   # Should be called when the user logout.
@@ -98,7 +115,6 @@ module.exports = ( configs ) ->
     
     # Check is we received rememberme cookie
     remembermeCookie = req.cookies[configs.cookieName]
-    console.log "#{req.method} #{req.path}: remembermeCookie: #{JSON.stringify(remembermeCookie)}"
     return next() unless remembermeCookie?.user? && remembermeCookie?.token?
     
     cookieUser = remembermeCookie.user
@@ -109,23 +125,19 @@ module.exports = ( configs ) ->
         
       , (userRememberMeTokens, sessionUser, cb ) ->
         if sessionUser? && userRememberMeTokens?
-          console.log "#{req.method} #{req.path}: Loaded user with tokens: [#{userRememberMeTokens}], looking for #{remembermeCookie.token}"
-          if _.contains userRememberMeTokens, remembermeCookie.token
-            console.log "#{req.method} #{req.path}: Token validated"
+          if _.contains userRememberMeTokens, crypto.createHash('md5').update(remembermeCookie.token).digest('hex')
             
             # Set the user in session and handle the request
             configs.setUserInSession( req, sessionUser )
             
             # Generate a new remembre me token
-            generateRememberMeToken req, sessionUser, remembermeCookie?.token, cookieUser, res, cb
+            generateRememberMeToken sessionUser, remembermeCookie?.token, cookieUser, res, cb
   
           else
             # Wipe all user.rememberMeToken token in case this is an attack
-            console.log "#{req.method} #{req.path}: Invalid token, clearing cookie"
             res.clearCookie( configs.cookieName );
             configs.deleteAllTokens sessionUser, cb
         else
-          console.log "#{req.method} #{req.path}: User not found, clearing cookie"
           res.clearCookie( configs.cookieName );
           cb null
         
