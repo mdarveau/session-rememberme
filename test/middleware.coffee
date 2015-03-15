@@ -1,10 +1,13 @@
 chai = require("chai")
 sinon = require("sinon")
 sinonChai = require("sinon-chai")
+crypto = require( 'crypto' )
 chai.should()
 chai.use(sinonChai)
 
 rememberme = require('..')
+
+randomBuffer = new Buffer(32)
 
 describe 'rememberme-middleware', ->
   it 'should do nothing if authenticated', ( done ) ->
@@ -134,17 +137,20 @@ describe 'rememberme-middleware', ->
     req.cookies['rememberme'] = 
       user: "user 1"
       token: "token 1"
-    res = {}
+    res = {
+      clearCookie: sinon.spy()
+    }
     rememberme( configs ).middleware req, res, () ->
       configs.deleteAllTokens.should.have.been.calledOnce
       configs.deleteAllTokens.should.have.been.calledWith( {id:"1"} )
+      res.clearCookie.should.have.been.calledOnce
       done()
      
   it 'should set user in session when provided token is found', ( done ) ->
     configs = 
       checkAuthenticated: sinon.stub().returns( false )
       loadUser: sinon.spy ( cookieUser, cb ) ->
-        cb null, ['token 1'], {id:"1"}
+        cb null, [crypto.createHash('md5').update('token 1').digest('hex')], {id:"1"}
       setUserInSession: sinon.spy()
       deleteToken: sinon.spy ( sessionUser, currentToken, cb ) ->
         cb null
@@ -159,17 +165,22 @@ describe 'rememberme-middleware', ->
     res = {
       cookie: sinon.spy()
     }
+    
+    sinon.stub(crypto, "randomBytes", (size, cb) ->
+      cb null, randomBuffer
+    )
+    
     rememberme( configs ).middleware req, res, () ->
       configs.setUserInSession.should.have.been.calledOnce
       configs.setUserInSession.should.have.been.calledWith( req, {id:"1"} )
       configs.deleteToken.should.have.been.calledOnce
       configs.deleteToken.should.have.been.calledWith( {id:"1"}, "token 1" )
-      configs.saveNewToken.should.have.been.calledOnc
+      configs.saveNewToken.should.have.been.calledOnce
       configs.saveNewToken.should.have.been.calledWith( {id:"1"} )
       configs.deleteToken.should.have.been.calledWith( {id:"1"}, "token 1" )
-      newToken = configs.saveNewToken.args[0][1]
       res.cookie.should.have.been.calledOnce
-      res.cookie.should.have.been.calledWith( "rememberme", {user:"user 1", token:newToken}, {maxAge: 90 * 24 * 60 * 60 * 1000, httpOnly: true} )
+      res.cookie.should.have.been.calledWith( "rememberme", {user:"user 1", token:randomBuffer.toString( 'hex' )}, {maxAge: 90 * 24 * 60 * 60 * 1000, httpOnly: true} )
+      crypto.randomBytes.restore()
       done()
       
   it 'should return cookie with configured name and max age', ( done ) ->
@@ -178,7 +189,7 @@ describe 'rememberme-middleware', ->
       cookieName: 'customname'
       checkAuthenticated: sinon.stub().returns( false )
       loadUser: sinon.spy ( cookieUser, cb ) ->
-        cb null, ['token 1'], {id:"1"}
+        cb null, [crypto.createHash('md5').update('token 1').digest('hex')], {id:"1"}
       setUserInSession: sinon.spy()
       deleteToken: sinon.spy ( sessionUser, currentToken, cb ) ->
         cb null
@@ -193,8 +204,13 @@ describe 'rememberme-middleware', ->
     res = {
       cookie: sinon.spy()
     }
+    
+    sinon.stub(crypto, "randomBytes", (size, cb) ->
+      cb null, randomBuffer
+    )
+    
     rememberme( configs ).middleware req, res, () ->
-      newToken = configs.saveNewToken.args[0][1]
       res.cookie.should.have.been.calledOnce
-      res.cookie.should.have.been.calledWith( "customname", {user:"user 1", token:newToken}, {maxAge: 1, httpOnly: true} )
+      res.cookie.should.have.been.calledWith( "customname", {user:"user 1", token:randomBuffer.toString( 'hex' )}, {maxAge: 1, httpOnly: true} )
+      crypto.randomBytes.restore()
       done()
