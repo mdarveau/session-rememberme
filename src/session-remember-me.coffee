@@ -106,7 +106,7 @@ module.exports = ( configs ) ->
     currentToken = req.cookies[configs.cookieName]?.token
     res.clearCookie( configs.cookieName );
     if currentToken?
-      configs.deleteToken sessionUser, currentToken, cb
+      configs.deleteToken sessionUser, crypto.createHash('md5').update(currentToken).digest('hex'), cb
     else
       cb null
       
@@ -131,7 +131,7 @@ module.exports = ( configs ) ->
             configs.setUserInSession( req, sessionUser )
             
             # Generate a new remembre me token
-            generateRememberMeToken sessionUser, remembermeCookie?.token, cookieUser, res, cb
+            generateRememberMeToken sessionUser, crypto.createHash('md5').update(remembermeCookie.token).digest('hex'), cookieUser, res, cb
   
           else
             # Wipe all user.rememberMeToken token in case this is an attack
