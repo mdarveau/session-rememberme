@@ -1,7 +1,7 @@
 {
   "name": "session-rememberme",
   "private": false,
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Add remember-me support to your app with this express middleware.",
   "author": "Manuel Darveau <manueldarveau@gmail.com> (http://blog.mdarveau.com)",
   "keywords": [
