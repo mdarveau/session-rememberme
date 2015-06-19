@@ -10,9 +10,6 @@ module.exports = ( configs ) ->
   throw "saveNewToken must be defined" unless configs?.saveNewToken?
   
   defaults = 
-    # The name of the cookie used to store the rememberme info. Defaults to 'rememberme'.
-    cookieName : 'rememberme'
-    
     # How log should the user be remembered. Defaults to 90 days.
     maxAge: 90 * 24 * 60 * 60 * 1000
     
@@ -20,13 +17,13 @@ module.exports = ( configs ) ->
       # Return true if session is already authenticated
       return req.session? && req.session?.user?
     
-    # cookieUser: The user data persisted in cookie. Could be an id or a complex id that will be serialized with JSON.stringify.
+    # userFromData: The user data persisted in browser. Could be an id or a complex id that will be serialized with JSON.stringify.
     # cb ( err, userRememberMeTokens[], sessionUser ):
-    #   err: Error loading user. This will end to request but keep the cookie intact. If you want to clear the cookie (because the user is not found for example), pass null in `userTokens` and `sessionUser`.
+    #   err: Error loading user. This will end to request but keep the browser data intact. If you want to clear the browser data (because the user is not found for example), pass null in `userTokens` and `sessionUser`.
     #   userRememberMeTokens: The list of rememberme tokens associated with the user
     #   sessionUser: The user (typically the user id) to save in session. Will be passed back to setUserInSession
-    loadUser: ( cookieUser, cb ) ->
-      # Should load the session user (from DB) based on user info stored in cookie.
+    loadUser: ( userFromData, cb ) ->
+      # Should load the session user (from DB) based on user info stored in browser.
       return
     
     # Will be called with sessionUser passed to loadUser's cb sessionUser when the rememember me token was validated.
@@ -59,8 +56,8 @@ module.exports = ( configs ) ->
       
   configs = _.merge defaults, configs  
     
-  # Will return the new token in res cookie and the call cb
-  generateRememberMeToken = ( sessionUser, currentToken, cookieUser, res, cb ) ->
+  # Will return the new token in http header 'X-Remember-Me' and the call cb
+  generateRememberMeToken = ( sessionUser, currentToken, userFromData, res, cb ) ->
     async.waterfall [
       ( cb ) ->
         # Delete current token
@@ -83,8 +80,9 @@ module.exports = ( configs ) ->
     ], ( err, newToken ) ->
       return cb( err ) if err?
   
-      # Return the new token in cookie
-      res.cookie( configs.cookieName, {user: cookieUser, token: newToken}, {maxAge: configs.maxAge, httpOnly: true} );
+      # Return the new token in 'X-Remember-Me' header
+      token = {user: userFromData, token: newToken}
+      res.set('X-Remember-Me', JSON.stringify(token));
       cb null
   
   
@@ -92,10 +90,10 @@ module.exports = ( configs ) ->
   
   #
   # Should be called after successfull login AND the remember me option was set.
-  # Will add a cookie to the response so you must write response only in the callback.
+  # Will add a header to the response so you must write response only in the callback.
   #
-  exports.login = ( sessionUser, cookieUser, res, cb ) ->
-    generateRememberMeToken sessionUser, null, cookieUser, res, cb
+  exports.login = ( sessionUser, userFromData, res, cb ) ->
+    generateRememberMeToken sessionUser, null, userFromData, res, cb
   
   #
   # Should be called when the user logout.
@@ -113,32 +111,31 @@ module.exports = ( configs ) ->
   exports.middleware = (req, res, next) ->
     return next() if configs.checkAuthenticated( req )
     
-    # Check is we received rememberme cookie
-    remembermeCookie = req.cookies[configs.cookieName]
-    return next() unless remembermeCookie?.user? && remembermeCookie?.token?
+    # Try getting it from the headers
+    remembermeData = req.get('X-Remember-Me')
+    remembermeData = JSON.parse(remembermeData) if remembermeData?
+    return next() unless remembermeData?.user? && remembermeData?.token?
     
-    cookieUser = remembermeCookie.user
+    userFromData = remembermeData.user
     
     async.waterfall [
       ( cb ) ->
-        configs.loadUser cookieUser, cb
+        configs.loadUser userFromData, cb
         
       , (userRememberMeTokens, sessionUser, cb ) ->
         if sessionUser? && userRememberMeTokens?
-          if _.contains userRememberMeTokens, crypto.createHash('md5').update(remembermeCookie.token).digest('hex')
+          if _.contains userRememberMeTokens, crypto.createHash('md5').update(remembermeData.token).digest('hex')
             
             # Set the user in session and handle the request
             configs.setUserInSession( req, sessionUser )
             
             # Generate a new remembre me token
-            generateRememberMeToken sessionUser, crypto.createHash('md5').update(remembermeCookie.token).digest('hex'), cookieUser, res, cb
+            generateRememberMeToken sessionUser, crypto.createHash('md5').update(remembermeData.token).digest('hex'), userFromData, res, cb
   
           else
             # Wipe all user.rememberMeToken token in case this is an attack
-            res.clearCookie( configs.cookieName );
             configs.deleteAllTokens sessionUser, cb
         else
-          res.clearCookie( configs.cookieName );
           cb null
         
     ], ( err ) ->
