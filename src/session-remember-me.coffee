@@ -97,14 +97,14 @@ module.exports = ( configs ) ->
   
   #
   # Should be called when the user logout.
-  # Remove the remember me token from cookie.
+  # Remove the remember me token from storage.
   #
   exports.logout = ( req, res, sessionUser, cb ) ->
     # Delete the received token from the list of "remember me" token for that user
-    currentToken = req.cookies[configs.cookieName]?.token
-    res.clearCookie( configs.cookieName );
-    if currentToken?
-      configs.deleteToken sessionUser, crypto.createHash('md5').update(currentToken).digest('hex'), cb
+    remembermeData = req.get('X-Remember-Me')
+    if remembermeData?
+      remembermeData = JSON.parse(remembermeData)
+      configs.deleteToken sessionUser, crypto.createHash('md5').update(remembermeData.token).digest('hex'), cb
     else
       cb null
       
