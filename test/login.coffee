@@ -23,7 +23,7 @@ describe 'rememberme-login', ->
     sessionUser = {id:"1"}
     cookieUser = "user 1"
     res = {
-      cookie: sinon.spy()
+      set: sinon.spy()
     }
     
     sinon.stub(crypto, "randomBytes", (size, cb) ->
@@ -34,36 +34,8 @@ describe 'rememberme-login', ->
       configs.deleteToken.should.have.not.been.called
       configs.saveNewToken.should.have.been.calledOnce
       configs.saveNewToken.should.have.been.calledWith( {id:"1"} )
-      res.cookie.should.have.been.calledOnce
-      res.cookie.should.have.been.calledWith( "rememberme", {user:"user 1", token:randomBuffer.toString( 'hex' )}, {maxAge: 90 * 24 * 60 * 60 * 1000, httpOnly: true} )
-      crypto.randomBytes.restore()
-      done()
-      
-  it 'should return cookie with configured name and max age', ( done ) ->
-    configs = 
-      maxAge: 1
-      cookieName: 'customname' 
-      checkAuthenticated: sinon.spy()
-      loadUser: sinon.spy()
-      setUserInSession: sinon.spy()
-      deleteToken: sinon.spy()
-      deleteAllTokens: sinon.spy()
-      saveNewToken: sinon.spy ( sessionUser, newToken, cb ) ->
-        cb null
-
-    sessionUser = {id:"1"}
-    cookieUser = "user 1"
-    res = {
-      cookie: sinon.spy()
-    }
-    
-    sinon.stub(crypto, "randomBytes", (size, cb) ->
-      cb null, randomBuffer
-    )
-    
-    rememberme( configs ).login sessionUser, cookieUser, res, () ->
-      newToken = configs.saveNewToken.args[0][1]
-      res.cookie.should.have.been.calledOnce
-      res.cookie.should.have.been.calledWith( "customname", {user:"user 1", token:randomBuffer.toString( 'hex' )}, {maxAge: 1, httpOnly: true} )
+      res.set.should.have.been.calledOnce
+      console.log "#{JSON.stringify(res.set.args, null, '  ')}"
+      res.set.should.have.been.calledWith( "X-Remember-Me", JSON.stringify({user:"user 1", token:randomBuffer.toString( 'hex' )}) )
       crypto.randomBytes.restore()
       done()

@@ -124,7 +124,7 @@ module.exports = ( configs ) ->
         
       , (userRememberMeTokens, sessionUser, cb ) ->
         if sessionUser? && userRememberMeTokens?
-          if _.contains userRememberMeTokens, crypto.createHash('md5').update(remembermeData.token).digest('hex')
+          if _.includes userRememberMeTokens, crypto.createHash('md5').update(remembermeData.token).digest('hex')
             
             # Set the user in session and handle the request
             configs.setUserInSession( req, sessionUser )
