@@ -1,7 +1,7 @@
 {
   "name": "session-rememberme",
   "private": false,
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Add remember-me support to your app with this express middleware.",
   "author": "Manuel Darveau <manueldarveau@gmail.com> (http://blog.mdarveau.com)",
   "keywords": [
@@ -15,8 +15,7 @@
   "dependencies": {
     "lodash": "4.17.4",
     "async": "2.2.0",
-    "bcrypt": "1.0.2",
-    "crypto": "0.0.3"
+    "bcrypt": "1.0.2"
   },
   "devDependencies": {
     "chai": "3.5.0",
