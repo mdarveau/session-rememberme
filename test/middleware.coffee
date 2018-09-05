@@ -27,6 +27,7 @@ describe 'rememberme-middleware', ->
       configs.loadUser.should.have.not.been.called
       configs.setUserInSession.should.have.not.been.called
       done()
+    return
 
   describe 'cookie-test', ->
     it 'should do nothing if cookie not set', ( done ) ->
@@ -45,6 +46,7 @@ describe 'rememberme-middleware', ->
         configs.loadUser.should.have.not.been.called
         configs.setUserInSession.should.have.not.been.called
         done()
+      return
       
     it 'should do nothing if user not set in cookie', ( done ) ->
       configs = 
@@ -62,6 +64,7 @@ describe 'rememberme-middleware', ->
         configs.loadUser.should.have.not.been.called
         configs.setUserInSession.should.have.not.been.called
         done()
+      return
       
     it 'should do nothing if token not set in cookie', ( done ) ->
       configs = 
@@ -80,11 +83,12 @@ describe 'rememberme-middleware', ->
         configs.loadUser.should.have.not.been.called
         configs.setUserInSession.should.have.not.been.called
         done()
+      return
             
   it 'should load user with cookie info', ( done ) ->
     configs = 
       checkAuthenticated: sinon.stub().returns( false )
-      loadUser: sinon.spy ( cookieUser, cb ) ->
+      loadUser: sinon.spy ( cookieUser ) ->
         done()
       setUserInSession: sinon.spy()
       deleteToken: sinon.spy()
@@ -95,16 +99,15 @@ describe 'rememberme-middleware', ->
       get: sinon.stub().withArgs('X-Remember-Me').returns('{"user": "user 1", "token": "token 1"}');
     res = {}
     rememberme( configs ).middleware req, res, null
+    return
     
   it 'should clear all tokens when provided token is not found', ( done ) ->
     configs = 
       checkAuthenticated: sinon.stub().returns( false )
-      loadUser: sinon.spy ( cookieUser, cb ) ->
-        cb null, ['token 2'], {id:"1"}
+      loadUser: sinon.spy ( cookieUser ) -> Promise.resolve([['token 2'], {id:"1"}])
       setUserInSession: sinon.spy()
       deleteToken: sinon.spy()
-      deleteAllTokens: sinon.spy ( user, cb ) ->
-        cb null
+      deleteAllTokens: sinon.spy ( user ) -> Promise.resolve()
       saveNewToken: sinon.spy()
   
     req = 
@@ -114,28 +117,24 @@ describe 'rememberme-middleware', ->
       configs.deleteAllTokens.should.have.been.calledOnce
       configs.deleteAllTokens.should.have.been.calledWith( {id:"1"} )
       done()
-     
+    return
+
   it 'should set user in session when provided token is found', ( done ) ->
     configs = 
       checkAuthenticated: sinon.stub().returns( false )
-      loadUser: sinon.spy ( cookieUser, cb ) ->
-        cb null, [crypto.createHash('md5').update('token 1').digest('hex')], {id:"1"}
+      loadUser: sinon.spy ( cookieUser ) -> Promise.resolve([[crypto.createHash('md5').update('token 1').digest('hex')], {id:"1"}])
       setUserInSession: sinon.spy()
-      deleteToken: sinon.spy ( sessionUser, currentToken, cb ) ->
-        cb null
+      deleteToken: sinon.spy ( sessionUser, currentToken ) -> Promise.resolve()
       deleteAllTokens: sinon.spy()
-      saveNewToken: sinon.spy ( sessionUser, newToken, cb ) ->
-        cb null
-  
+      saveNewToken: sinon.spy ( sessionUser, newToken ) -> Promise.resolve()
+
     req = 
       get: sinon.stub().withArgs('X-Remember-Me').returns('{"user": "user 1", "token": "token 1"}');
     res = {
       set: sinon.spy()
     }
-    
-    sinon.stub(crypto, "randomBytes", (size, cb) ->
-      cb null, randomBuffer
-    )
+
+    sinon.stub(crypto, "randomBytes").callsFake -> randomBuffer
     
     rememberme( configs ).middleware req, res, () ->
       configs.setUserInSession.should.have.been.calledOnce
@@ -148,3 +147,4 @@ describe 'rememberme-middleware', ->
       res.set.should.have.been.calledWith( "X-Remember-Me", "{\"user\":\"user 1\",\"token\":\"#{randomBuffer.toString( 'hex' )}\"}" )
       crypto.randomBytes.restore()
       done()
+    return
