@@ -1,7 +1,7 @@
 {
   "name": "session-rememberme",
   "private": false,
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "Add remember-me support to your app with this express middleware.",
   "author": "Manuel Darveau <manueldarveau@gmail.com> (http://blog.mdarveau.com)",
   "keywords": [
@@ -28,7 +28,7 @@
   },
   "license": "MIT",
   "engines": {
-    "node": ">= 8"
+    "node": ">= 10"
   },
   "scripts": {
     "prepublish": "coffee -o lib/ src/",
