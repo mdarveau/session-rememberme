@@ -92,6 +92,7 @@ module.exports = ( configs ) ->
 
     # Try getting it from the headers
     remembermeData = req.get('X-Remember-Me')
+    console.log("remembermeData = " + remembermeData)
     remembermeData = JSON.parse(remembermeData) if remembermeData?
     return next() unless remembermeData?.user? && remembermeData?.token?
 
@@ -100,6 +101,7 @@ module.exports = ( configs ) ->
     [userRememberMeTokens, sessionUser] = await configs.loadUser userFromData
     return next() unless sessionUser? && userRememberMeTokens?
 
+    console.log("remember me token #{crypto.createHash('md5').update(remembermeData.token).digest('hex')} #{_.includes userRememberMeTokens, crypto.createHash('md5').update(remembermeData.token).digest('hex') ? 'found' : 'not found'} in #{userRememberMeTokens}")
     if _.includes userRememberMeTokens, crypto.createHash('md5').update(remembermeData.token).digest('hex')
       # Set the user in session and handle the request
       configs.setUserInSession( req, sessionUser )
