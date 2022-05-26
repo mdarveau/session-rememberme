@@ -7,7 +7,7 @@ chai.use(sinonChai)
 
 rememberme = require('..')
 
-randomBuffer = new Buffer(32)
+randomBuffer = new Buffer.alloc(32)
 
 describe 'rememberme-middleware', ->
   it 'should do nothing if authenticated', ( done ) ->

@@ -1,7 +1,7 @@
 {
   "name": "session-rememberme",
   "private": false,
-  "version": "14.0.0",
+  "version": "18.0.0",
   "description": "Add remember-me support to your app with this express middleware.",
   "author": "Manuel Darveau <manueldarveau@gmail.com> (http://blog.mdarveau.com)",
   "keywords": [
@@ -13,24 +13,24 @@
   ],
   "repository": "mdarveau/session-rememberme",
   "dependencies": {
-    "bcrypt": "5.0.0",
+    "bcrypt": "^5.0.1",
     "bluebird": "3.7.2",
     "lodash": "4.17.21"
   },
   "devDependencies": {
-    "chai": "4.3.0",
-    "coffeescript": "2.5.1",
-    "mocha": "8.3.0",
+    "chai": "4.3.6",
+    "coffeescript": "2.7.0",
+    "mocha": "^10.0.0",
     "should": "13.2.3",
-    "sinon": "9.2.4",
-    "sinon-chai": "3.5.0"
+    "sinon": "14.0.0",
+    "sinon-chai": "3.7.0"
   },
   "license": "MIT",
   "engines": {
-    "node": ">= 14"
+    "node": ">= 18"
   },
   "scripts": {
     "prepublish": "coffee -o lib/ src/",
-    "test": "mocha --compilers coffee:coffeescript/register --reporter spec --bail --check-leaks test/"
+    "test": "mocha --require coffeescript/register --reporter spec --bail --check-leaks test/*"
   }
 }
